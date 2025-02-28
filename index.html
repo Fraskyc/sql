@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Správa vtipů a citátů</title>
+</head>
+<body>
+
+    <h1>Správa vtipů a citátů</h1>
+
+    <!-- Formulář pro přidání nového záznamu -->
+    <input type="text" id="recordText" placeholder="Zadejte text">
+    <select id="recordCategory">
+        <option value="vtip">Vtip</option>
+        <option value="citát">Citát</option>
+    </select>
+    <button onclick="addRecord()">Přidat</button>
+
+    <hr>
+
+    <!-- Filtrování -->
+    <input type="text" id="searchText" placeholder="Hledat">
+    <select id="filterCategory">
+        <option value="">Všechny</option>
+        <option value="vtip">Vtipy</option>
+        <option value="citát">Citáty</option>
+    </select>
+    <button onclick="loadRecords()">Filtrovat</button>
+
+    <ul id="recordsList"></ul>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
