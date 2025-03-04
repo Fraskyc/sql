@@ -1,29 +1,33 @@
 async function loadRecords() {
-    const category = document.getElementById('filterCategory').value;
-    const search = document.getElementById('searchText').value;
+    const response = await fetch('/records');
+    let records = await response.json();
 
-    let url = `/records?`;
-    if (category) url += `category=${encodeURIComponent(category)}&`;
-    if (search) url += `search=${encodeURIComponent(search)}`;
+    // Filtrování podle kategorie
+    const selectedCategory = document.getElementById('filterCategory').value;
+    if (selectedCategory !== 'all') {
+        records = records.filter(record => record.category === selectedCategory);
+    }
 
-    const response = await fetch(url);
-    const records = await response.json();
+    // Hledání v textu
+    const searchText = document.getElementById('searchText').value.toLowerCase();
+    if (searchText) {
+        records = records.filter(record => record.text.toLowerCase().includes(searchText));
+    }
+
     const list = document.getElementById('recordsList');
     list.innerHTML = '';
-
     records.forEach(record => {
         const li = document.createElement('li');
-        li.innerHTML = `<b>[${record.category}]</b> ${record.text}`;
 
-        const editBtn = document.createElement('button');
-        editBtn.textContent = 'Upravit';
-        editBtn.onclick = () => editRecord(record);
+        let displayText = record.category === 'úkol' 
+            ? `[${record.sub_category || 'Neurčeno'}] ${record.text} (${record.category})`
+            : `${record.text} (${record.category})`;
+
+        li.textContent = displayText;
 
         const deleteBtn = document.createElement('button');
         deleteBtn.textContent = 'Smazat';
         deleteBtn.onclick = () => deleteRecord(record.id);
-
-        li.appendChild(editBtn);
         li.appendChild(deleteBtn);
         list.appendChild(li);
     });
@@ -32,48 +36,31 @@ async function loadRecords() {
 async function addRecord() {
     const text = document.getElementById('recordText').value;
     const category = document.getElementById('recordCategory').value;
+    const sub_category = category === 'úkol' ? document.getElementById('recordSubCategory').value : '';
 
-    if (!text) {
-        alert("Zadejte text!");
-        return;
-    }
+    if (!text) return;
 
-    const response = await fetch('/records', {
+    await fetch('/records', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text, category })
+        body: JSON.stringify({ text, category, sub_category })
     });
 
-    if (!response.ok) {
-        const errorData = await response.json();
-        alert("Chyba: " + errorData.error);
-        return;
-    }
-
-    document.getElementById('recordText').value = ''; // Vyčistí input
-    loadRecords(); // Aktualizuje seznam
-}
-
-
-async function editRecord(record) {
-    const newText = prompt("Upravte text:", record.text);
-    if (!newText) return;
-
-    const newCategory = prompt("Upravte kategorii (vtip/citát):", record.category);
-    if (!newCategory || (newCategory !== "vtip" && newCategory !== "citát")) return alert("Neplatná kategorie!");
-
-    await fetch(`/records/${record.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: newText, category: newCategory })
-    });
-
+    document.getElementById('recordText').value = '';
     loadRecords();
 }
+
 
 async function deleteRecord(id) {
     await fetch(`/records/${id}`, { method: 'DELETE' });
     loadRecords();
 }
 
+function toggleSubCategory() {
+    const category = document.getElementById('recordCategory').value;
+    const subCategorySelect = document.getElementById('recordSubCategory');
+    subCategorySelect.style.display = category === 'úkol' ? 'inline-block' : 'none';
+}
+
 window.onload = loadRecords;
+

@@ -12,68 +12,45 @@ app.use(cors());
 app.use(bodyParser.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Vytvoření tabulky
+// Tabulka
 db.serialize(() => {
-    db.run("CREATE TABLE IF NOT EXISTS records (id INTEGER PRIMARY KEY AUTOINCREMENT, text TEXT, category TEXT)");
+    db.run(`
+        CREATE TABLE IF NOT EXISTS records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, 
+            text TEXT, 
+            category TEXT DEFAULT 'Neznámá',
+            sub_category TEXT DEFAULT ''
+        )
+    `);
 });
 
-
-// Získání všech záznamů
 app.get('/records', (req, res) => {
-    const { category, search } = req.query;
-    let query = "SELECT * FROM records";
-    let params = [];
-
-    if (category) {
-        query += " WHERE category = ?";
-        params.push(category);
-    }
-
-    if (search) {
-        query += category ? " AND text LIKE ?" : " WHERE text LIKE ?";
-        params.push(`%${search}%`);
-    }
-
-    db.all(query, params, (err, rows) => {
+    db.all("SELECT id, text, category, IFNULL(sub_category, 'Neurčeno') AS sub_category FROM records", [], (err, rows) => {
         if (err) {
-            return res.status(500).json({ error: err.message });
+            res.status(500).json({ error: err.message });
+            return;
         }
         res.json(rows);
     });
 });
 
-
 // Přidání nového záznamu
 app.post('/records', (req, res) => {
-    const { text, category } = req.body;
-
-    if (!text || !category) {
-        return res.status(400).json({ error: 'Text a kategorie jsou povinné' });
+    const { text, category, sub_category } = req.body;
+    if (!text) {
+        return res.status(400).json({ error: 'Text je povinný' });
     }
+    const categoryValue = category || 'Neznámá';
+    const subCategoryValue = category === 'úkol' ? sub_category || 'Neurčeno' : ''; 
 
-    db.run("INSERT INTO records (text, category) VALUES (?, ?)", [text, category], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ id: this.lastID, text, category });
-    });
-});
-
-
-app.put('/records/:id', (req, res) => {
-    const { text, category } = req.body;
-    const { id } = req.params;
-    
-    if (!text || !category) {
-        return res.status(400).json({ error: 'Text a kategorie jsou povinné' });
-    }
-    
-    db.run("UPDATE records SET text = ?, category = ? WHERE id = ?", [text, category, id], function (err) {
-        if (err) {
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ message: 'Záznam aktualizován' });
-    });
+    db.run("INSERT INTO records (text, category, sub_category) VALUES (?, ?, ?)", 
+        [text, categoryValue, subCategoryValue], 
+        function (err) {
+            if (err) {
+                return res.status(500).json({ error: err.message });
+            }
+            res.json({ id: this.lastID, text, category: categoryValue, sub_category: subCategoryValue });
+        });
 });
 
 // Smazání záznamu
